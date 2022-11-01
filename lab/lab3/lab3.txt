@@ -1,0 +1,66 @@
+import boto3
+
+dynamodb = boto3.resource('dynamodb')
+
+table = dynamodb.create_table (
+    TableName = '22994257-Table',
+       KeySchema = [
+           {
+               'AttributeName': 'userId',
+               'KeyType': 'HASH'
+           },
+           {
+               'AttributeName': 'fileName',
+               'KeyType': 'RANGE'
+           }
+           ],
+           AttributeDefinitions = [
+               {
+                   'AttributeName': 'userId',
+                   'AttributeType': 'S'
+               },
+               {
+                   'AttributeName':'fileName',
+                   'AttributeType': 'S'
+               }
+            ],
+            ProvisionedThroughput={
+                'ReadCapacityUnits':1,
+                'WriteCapacityUnits':1
+            }
+          
+    )
+print(table)
+
+
+
+
+
+
+
+import os
+import boto3
+
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table('22994257-Table')
+
+BUCKET = '22994257-cloudstorage'
+s3 = boto3.client('s3')
+paginator = s3.get_paginator('list_objects_v2')
+
+# List all of the objects
+for page in paginator.paginate(Bucket=BUCKET):
+    for cur in page.get("Contents", []):
+        acl = s3.get_object_acl(Bucket=BUCKET, Key=cur['Key'])
+        path, fileName = os.path.split(cur['Key'])
+        lastUpdated = cur['LastModified']
+        userId = acl['Owner']['ID']
+        owner = acl['Owner']['DisplayName']
+        permissions = acl['Grants'][0]['Permission']
+        response = table.put_item(Item={"userId": userId, "fileName": fileName, "path": path, "lastUpdated": lastUpdated, "owner": owner, "permissions": permissions })
+        print(response)
+
+
+response = table.scan()
+print(response['Items'])
+ 
